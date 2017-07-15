@@ -1,10 +1,134 @@
-from flask import Flask, render_template
+from flask import Flask, url_for, redirect, render_template, request, g
+
+
+import datetime
+import sqlite3
 
 app = Flask(__name__)
+app.config.from_object('_config')
 
-@app.route('/todo')
+def connect_db():
+    return sqlite3.connect(app.config['DATABASE_PATH'], detect_types=sqlite3.PARSE_DECLTYPES)
+
+def insert_task_string(task_name, min_days, max_days):
+    """
+    Helper function gives the insert sql query for a new task
+    """
+    date = datetime.datetime.now()
+    return "INSERT INTO tasks (name, last_done, min_days, max_days) VALUES (?, ?, ?, ?)", (task_name, date, min_days, max_days)
+
+@app.template_filter('datetime')
+def format_datetime(value):
+    format = "%D %I:%M %p"
+    return value.strftime(format)
+
+def update_task_string(task_id, date=None):
+    """
+    Helper function returns the update sql query to set the task
+    with task_id to the current date/time
+    """
+    if date is None:
+        date = datetime.datetime.now()
+    return "UPDATE tasks SET last_done=? WHERE task_id=?", (date, task_id)
+
+def get_task_color(task):
+    """
+    Helper function gets the hexadecimal color for a certain task
+    """
+    current_time = datetime.datetime.now()
+    how_many_days = (current_time - task['last_done']).seconds / (60 * 60 * 24.0)
+    how_bad = (how_many_days - task['min_days']) / (task['max_days'] - task['min_days'])
+    if how_bad < 0:
+        return "#CCCCCC"
+    elif how_bad < 0.5:
+        hex_code = hex(int((how_bad / 0.5) * 255))[-2:].upper()
+        return "#%sFF00" % hex_code
+    elif how_bad < 1:
+        hex_code = hex(int((1 - how_bad) * 255 / 0.5))[-2:].upper()
+        return "#FF%s00" % hex_code
+    else:
+        return "#FF0000"
+
+
+def is_task_due(task):
+    current_time = datetime.datetime.now()
+    return (current_time - task['last_done']).seconds / (60 * 60 * 24.0) > task['min_days']
+
+def wrap_task(task_row):
+    return dict(task_id=task_row[0], name=task_row[1], min_days=task_row[2], max_days=task_row[3], last_done=task_row[4])
+
+def get_all_tasks():
+    """
+    Returns a list of tasks (as dicts)
+    """
+    g.db = connect_db()
+    cursor = g.db.execute("SELECT * FROM tasks")
+    all_tasks = [wrap_task(t) for t in cursor.fetchall()]
+    for task in all_tasks:
+        task['task_color'] = get_task_color(task)
+    return all_tasks
+
+def get_due_tasks():
+    """
+    Returns a list of tasks which are in the current range of things to do
+    """
+    all_tasks = get_all_tasks()
+    due_tasks = [task for task in all_tasks if is_task_due(task)]
+    return due_tasks
+
+@app.route('/todo', methods=['GET', 'POST'])
 def todo():
-    return render_template('todo.html')
+    g.db = connect_db()
+    if request.method == 'GET':
+        # cursor = g.db.execute('SELECT task_id, name, last_done, min_days, max_days FROM tasks')
+        # tasks = [dict(task_id=t[0], name=t[1], last_done=t[2].strftime("%D %I:%M %p")) for t in cursor.fetchall()]
+        tasks = get_due_tasks()
+        # for task in tasks:
+        #    task['last_done'] = task['last_done'].strftime("%D %I:%M %p")
+        return render_template('todo.html', tasks=tasks)
+    else:
+        new_task = request.form["task"]
+        min_days = request.form["min_days"]
+        max_days = request.form["max_days"]
+        insert_string, args = insert_task_string(new_task, min_days, max_days)
+        g.db.execute(insert_string, args)
+        g.db.commit()
+        g.db.close()
+        return redirect(url_for('todo'))
+
+@app.route('/all-tasks')
+def all_todo():
+    all_tasks = get_all_tasks()
+    return render_template('todo.html', tasks=all_tasks)
+
+@app.route('/edit/<task_id>', methods=['GET', 'POST'])
+def edit(task_id):
+    g.db = connect_db()
+    if request.method == 'GET':
+        task = g.db.execute('SELECT * FROM tasks WHERE task_id=?', (task_id,)).fetchone()
+        if task is None:
+            return "Not a task actually"
+        else:
+            task = wrap_task(task)
+            return render_template('task_edit.html', task=task)
+    else:
+        new_name= request.form["new_name"]
+        last_done = request.form["new_date"]
+        new_min = request.form["new_min"]
+        new_max = request.form["new_max"]
+        g.db.execute("UPDATE tasks SET name=?, last_done=?, min_days=?, max_days=? WHERE task_id=?", (new_name, last_done, new_min, new_max, task_id))
+        g.db.commit()
+        g.db.close()
+        return redirect(url_for('todo'))
+
+@app.route('/update/<task_id>')
+def update(task_id):
+    g.db = connect_db()
+    task_string, args = update_task_string(task_id)
+    g.db.execute(task_string, args)
+    g.db.commit()
+    g.db.close()
+    return redirect(url_for('todo'))
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)

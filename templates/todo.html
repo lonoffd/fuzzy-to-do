@@ -1,13 +1,26 @@
 <html>
+    <head>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    </head>
+
     <body>
         <ul>
-            <li>Cat box</li>
-            <li>Clean microwave</li>
-            <li>Clean toilet</li>
+            {% for t in tasks %}
+            <li style="background-color: {{ t.task_color }}">{{t.name}}, last done: {{t.last_done | datetime}} <a href={{ url_for('update', task_id=t.task_id) }}>Do</a>|
+            <a href={{ url_for('edit', task_id=t.task_id) }}>Edit</a></li>
+            {% endfor %}
         </ul>
         <div>
-            <form action="." method="POST">
-                <textarea name="contents" placeholder="Enter a new item"></textarea>
+            <form action="{{ url_for('todo') }}" method="POST">
+                <input name="task" 
+                placeholder="Enter a new item"
+                type="text">
+                <input name="min_days"
+                placeholder="Min time in days"
+                type="number" step="any" min="0">
+                <input name="max_days"
+                placeholder="Max time in days"
+                type="number" step="any" min="0">
                 <input type="submit" value="Add item">
             </form>
         </div>
