@@ -35,7 +35,6 @@ def get_dueness(task):
     current_time = datetime.datetime.now()
     how_many_days = (current_time - task['last_done']) / datetime.timedelta(days=1)
     dueness = (how_many_days - task['min_days']) / (task['max_days'] - task['min_days'])
-    print("task name: ", task['name'], "current time", current_time, "last_done", task['last_done'], "how_many_days", how_many_days, "dueness", dueness)
     return dueness
 
 def padded_hex(n):

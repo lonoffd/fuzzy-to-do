@@ -1,48 +1,37 @@
-<html>
-    <head>
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-    </head>
-
-    <body>
-        <div class="jumbotron text-center">
-            <h1>Fuzzy To-Do List</h1>
-        </div>
-
-        <div class="container">
-            <div class="row">
-                <ul>
-                    {% for t in tasks %}
-                    <li style="background-color: {{ t.task_color }}"><strong>{{t.name}}</strong> last done: {{t.last_done | datetime}}
-                    <a href={{ url_for('update', task_id=t.task_id) }}>
-                        <button type="button" class="btn btn-default btn-sm right">
-                            <span class="glyphicon glyphicon-ok"></span>
-                        </button>
-                    </a>
-                    <a href={{ url_for('edit', task_id=t.task_id) }}>
-                        <button type="button" class="btn btn-default btn-sm right">
-                            <span class="glyphicon glyphicon-pencil"></span> 
-                        </button>
-                    </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-        <div>
-            <form action="{{ url_for('todo') }}" method="POST">
-                <input name="task" 
-                placeholder="Enter a new item"
-                type="text">
-                <input name="min_days"
-                placeholder="Min time in days"
-                type="number" step="any" min="0">
-                <input name="max_days"
-                placeholder="Max time in days"
-                type="number" step="any" min="0">
-                <input type="submit" value="Add item">
-            </form>
-        </div>
-
-    </body>
-</html>
+{% extends "_base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <ul>
+            {% for t in tasks %}
+            <li style="background-color: {{ t.task_color }}"><strong>{{t.name}}</strong> last done: {{t.last_done | datetime}}
+            <a href={{ url_for('update', task_id=t.task_id) }}>
+                <button type="button" class="btn btn-default btn-sm right">
+                    <span class="glyphicon glyphicon-ok"></span>
+                </button>
+            </a>
+            <a href={{ url_for('edit', task_id=t.task_id) }}>
+                <button type="button" class="btn btn-default btn-sm right">
+                    <span class="glyphicon glyphicon-pencil"></span> 
+                </button>
+            </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div>
+        <form action="{{ url_for('todo') }}" method="POST">
+            <input name="task" 
+            placeholder="Enter a new item"
+            type="text">
+            <input name="min_days"
+            placeholder="Min time in days"
+            type="number" step="any" min="0">
+            <input name="max_days"
+            placeholder="Max time in days"
+            type="number" step="any" min="0">
+            <input type="submit" value="Add item">
+        </form>
+    </div>
+</div>
+{% endblock %}

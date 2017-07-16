@@ -1,14 +1,16 @@
-<html>
-    <body>
+{% extends "_base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
         <form method="post">
         Task ID: {{ task.task_id }}<br />
         Task: <input type="text" value="{{ task.name }}" name="new_name"><br/>
         Last Done: <input type="text" value="{{ task.last_done }}" name="new_date"><br/>
         Min Time: <input type="number" step="any" min=0 value="{{ task.min_days }}" name="new_min"><br/>
         Max Time: <input type="number" step="any" min=0 value="{{ task.max_days }}" name="new_max"><br/>
-        <input type="reset" value="Reset">
-        <input type="submit" value="Update">
+        <input type="reset" value="Reset" class="btn btn-secondary">
+        <input type="submit" value="Update" class="btn btn-primary">
         </form>
-    </body>
-
-</html>
+    </div>
+</div>
+{% endblock %}
