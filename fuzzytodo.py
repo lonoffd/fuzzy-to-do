@@ -33,9 +33,16 @@ def update_task_string(task_id, date=None):
 
 def get_dueness(task):
     current_time = datetime.datetime.now()
-    how_many_days = (current_time - task['last_done']).seconds / (60 * 60 * 24.0)
+    how_many_days = (current_time - task['last_done']) / datetime.timedelta(days=1)
     dueness = (how_many_days - task['min_days']) / (task['max_days'] - task['min_days'])
+    print("task name: ", task['name'], "current time", current_time, "last_done", task['last_done'], "how_many_days", how_many_days, "dueness", dueness)
     return dueness
+
+def padded_hex(n):
+    c = hex(n)[2:]
+    if len(c) == 1:
+        c = '0' + c
+    return c
 
 def get_task_color(task):
     """
@@ -45,18 +52,13 @@ def get_task_color(task):
     if dueness < 0:
         return "#CCCCCC"
     elif dueness < 0.5:
-        hex_code = hex(int((dueness / 0.5) * 255))[-2:].upper()
+        hex_code = padded_hex(int((dueness / 0.5) * 255) + 1).upper()
         return "#%sFF00" % hex_code
     elif dueness < 1:
-        hex_code = hex(int((1 - dueness) * 255 / 0.5))[-2:].upper()
+        hex_code = padded_hex(int((1 - dueness) * 255 / 0.5)).upper()
         return "#FF%s00" % hex_code
     else:
         return "#FF0000"
-
-
-def is_task_due(task):
-    current_time = datetime.datetime.now()
-    return (current_time - task['last_done']).seconds / (60 * 60 * 24.0) > task['min_days']
 
 def wrap_task(task_row):
     return dict(task_id=task_row[0], name=task_row[1], min_days=task_row[2], max_days=task_row[3], last_done=task_row[4])
@@ -70,24 +72,18 @@ def get_all_tasks():
     all_tasks = [wrap_task(t) for t in cursor.fetchall()]
     for task in all_tasks:
         task['task_color'] = get_task_color(task)
+        task['dueness'] = get_dueness(task)
+    g.db.close()
     return all_tasks
-
-def get_due_tasks():
-    """
-    Returns a list of tasks which are in the current range of things to do
-    """
-    all_tasks = get_all_tasks()
-    due_tasks = [task for task in all_tasks if is_task_due(task)]
-    return due_tasks
 
 @app.route('/todo', methods=['GET', 'POST'])
 def todo():
-    g.db = connect_db()
     if request.method == 'GET':
         tasks = get_all_tasks()
         tasks.sort(key=get_dueness, reverse=True)
         return render_template('todo.html', tasks=tasks)
     else:
+        g.db = connect_db()
         new_task = request.form["task"]
         min_days = request.form["min_days"]
         max_days = request.form["max_days"]
