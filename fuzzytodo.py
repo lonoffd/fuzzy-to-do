@@ -31,20 +31,24 @@ def update_task_string(task_id, date=None):
         date = datetime.datetime.now()
     return "UPDATE tasks SET last_done=? WHERE task_id=?", (date, task_id)
 
+def get_dueness(task):
+    current_time = datetime.datetime.now()
+    how_many_days = (current_time - task['last_done']).seconds / (60 * 60 * 24.0)
+    dueness = (how_many_days - task['min_days']) / (task['max_days'] - task['min_days'])
+    return dueness
+
 def get_task_color(task):
     """
     Helper function gets the hexadecimal color for a certain task
     """
-    current_time = datetime.datetime.now()
-    how_many_days = (current_time - task['last_done']).seconds / (60 * 60 * 24.0)
-    how_bad = (how_many_days - task['min_days']) / (task['max_days'] - task['min_days'])
-    if how_bad < 0:
+    dueness = get_dueness(task)
+    if dueness < 0:
         return "#CCCCCC"
-    elif how_bad < 0.5:
-        hex_code = hex(int((how_bad / 0.5) * 255))[-2:].upper()
+    elif dueness < 0.5:
+        hex_code = hex(int((dueness / 0.5) * 255))[-2:].upper()
         return "#%sFF00" % hex_code
-    elif how_bad < 1:
-        hex_code = hex(int((1 - how_bad) * 255 / 0.5))[-2:].upper()
+    elif dueness < 1:
+        hex_code = hex(int((1 - dueness) * 255 / 0.5))[-2:].upper()
         return "#FF%s00" % hex_code
     else:
         return "#FF0000"
@@ -80,11 +84,8 @@ def get_due_tasks():
 def todo():
     g.db = connect_db()
     if request.method == 'GET':
-        # cursor = g.db.execute('SELECT task_id, name, last_done, min_days, max_days FROM tasks')
-        # tasks = [dict(task_id=t[0], name=t[1], last_done=t[2].strftime("%D %I:%M %p")) for t in cursor.fetchall()]
-        tasks = get_due_tasks()
-        # for task in tasks:
-        #    task['last_done'] = task['last_done'].strftime("%D %I:%M %p")
+        tasks = get_all_tasks()
+        tasks.sort(key=get_dueness, reverse=True)
         return render_template('todo.html', tasks=tasks)
     else:
         new_task = request.form["task"]
@@ -95,11 +96,6 @@ def todo():
         g.db.commit()
         g.db.close()
         return redirect(url_for('todo'))
-
-@app.route('/all-tasks')
-def all_todo():
-    all_tasks = get_all_tasks()
-    return render_template('todo.html', tasks=all_tasks)
 
 @app.route('/edit/<task_id>', methods=['GET', 'POST'])
 def edit(task_id):
