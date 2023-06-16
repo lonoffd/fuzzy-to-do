@@ -1,3 +1,4 @@
 fuzzytodo.db
 *.pyc
+venv/*
 
